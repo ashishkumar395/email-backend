@@ -18,23 +18,15 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, timestamp: Date.now() });
 });
 
-// --- SMTP Transporter Setup (GoDaddy Updated) ---
+// --- SMTP Transporter Setup (Gmail) ---
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtpout.secureserver.net",
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,                 // IMPORTANT for GoDaddy
-  requireTLS: true,              // Force TLS handshake
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // TLS
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
-  },
-  tls: {
-    ciphers: "SSLv3",            // Fix for GoDaddy SMTP
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000
+  }
 });
 
 // Verify SMTP
