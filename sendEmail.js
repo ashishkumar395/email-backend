@@ -18,26 +18,32 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, timestamp: Date.now() });
 });
 
-// --- SMTP Transporter Setup ---
+// --- SMTP Transporter Setup (GoDaddy Updated) ---
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtpout.secureserver.net",
-  port: Number(process.env.SMTP_PORT) || 587,  // ⚠️ Changed to 587 for TLS
-  secure: false,                               // TLS requires false
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: false,                 // IMPORTANT for GoDaddy
+  requireTLS: true,              // Force TLS handshake
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
   },
   tls: {
+    ciphers: "SSLv3",            // Fix for GoDaddy SMTP
     rejectUnauthorized: false
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 20000
 });
 
-// Verify SMTP connection
+// Verify SMTP
 transporter.verify((err, success) => {
-  if (err) console.error("❌ SMTP connection failed:", err);
-  else console.log("✅ SMTP connection successful!");
+  if (err) {
+    console.error("❌ SMTP connection failed:", err);
+  } else {
+    console.log("✅ SMTP connection successful!");
+  }
 });
 
 // --- Email Sending Route ---
@@ -77,6 +83,7 @@ app.post('/api/send-email', async (req, res) => {
       message: "Email sent successfully",
       messageId: info.messageId
     });
+
   } catch (error) {
     console.error("❌ Error sending email:", error.message);
     res.status(500).json({
