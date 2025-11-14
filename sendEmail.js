@@ -6,26 +6,31 @@ const cors = require('cors');
 const app = express();
 
 // --- Middleware ---
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  methods: ['POST', 'GET'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json());
 
 // --- Health Check Routes ---
 app.get('/', (req, res) => {
-  res.status(200).send('✅ Email Backend is running successfully on Render');
+  res.status(200).send('✅ Email Backend with Zoho SMTP is running!');
 });
 
 app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, timestamp: Date.now() });
 });
 
-// --- SMTP Transporter Setup (Gmail) ---
+// --- SMTP Transporter Setup (Zoho) ---
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp.zoho.in",
   port: 587,
   secure: false, // TLS
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+    user: process.env.SMTP_USER,  // example: Contact@bluthservices.com
+    pass: process.env.SMTP_PASS   // your Zoho App Password
   }
 });
 
@@ -34,7 +39,7 @@ transporter.verify((err, success) => {
   if (err) {
     console.error("❌ SMTP connection failed:", err);
   } else {
-    console.log("✅ SMTP connection successful!");
+    console.log("✅ SMTP connected successfully to Zoho!");
   }
 });
 
@@ -51,33 +56,33 @@ app.post('/api/send-email', async (req, res) => {
 
   try {
     const mailOptions = {
-      from: `"${name}" <${process.env.SMTP_USER}>`,
+      from: process.env.SMTP_USER,
       replyTo: email,
       to: process.env.SMTP_USER,
-      subject: `Website Contact Form — ${service || "General Inquiry"}`,
+      subject: `Website Inquiry - ${service || "General"}`,
       html: `
-        <div style="font-family: Arial, sans-serif; color: #333;">
-          <h2>📩 New Contact Inquiry</h2>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${phone || "N/A"}</p>
-          <p><strong>Service:</strong> ${service || "Not specified"}</p>
-          <p><strong>Message:</strong><br/>${message}</p>
-        </div>
+        <h2>New Inquiry from Website</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone || "Not provided"}</p>
+        <p><strong>Service:</strong> ${service || "Not mentioned"}</p>
+        <p><strong>Message:</strong><br/>${message}</p>
       `
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully:", info.response);
+
+    console.log("✅ Email sent:", info.messageId);
 
     res.status(200).json({
       success: true,
       message: "Email sent successfully",
-      messageId: info.messageId
+      id: info.messageId
     });
 
   } catch (error) {
-    console.error("❌ Error sending email:", error.message);
+    console.error("❌ Email sending error:", error.message);
+
     res.status(500).json({
       success: false,
       error: error.message || "Failed to send email"
@@ -85,8 +90,8 @@ app.post('/api/send-email', async (req, res) => {
   }
 });
 
-// --- Start the Server ---
+// --- Start Server ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Email API running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
