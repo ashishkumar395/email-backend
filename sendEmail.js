@@ -16,30 +16,32 @@ app.use(express.json());
 
 // --- Health Check Routes ---
 app.get('/', (req, res) => {
-  res.status(200).send('✅ Email Backend with Zoho SMTP is running!');
+  res.status(200).send('✅ Email Backend with GoDaddy SMTP is running!');
 });
 
 app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, timestamp: Date.now() });
 });
 
-// --- SMTP Transporter Setup (Zoho) ---
+// --- SMTP Transporter Setup (GoDaddy SSL) ---
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.zoho.in",
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === "true" ? true : false,
+  host: process.env.SMTP_HOST || 'smtpout.secureserver.net',
+  port: Number(process.env.SMTP_PORT) || 465,
+  secure: true, // SSL
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
-  }
+  },
+  logger: true,
+  debug: true
 });
 
-// Verify SMTP
+// Verify SMTP connection
 transporter.verify((err, success) => {
   if (err) {
     console.error("❌ SMTP connection failed:", err);
   } else {
-    console.log("✅ SMTP connected successfully to Zoho!");
+    console.log("✅ SMTP connected successfully to GoDaddy!");
   }
 });
 
@@ -58,7 +60,7 @@ app.post('/api/send-email', async (req, res) => {
     const mailOptions = {
       from: process.env.SMTP_USER,
       replyTo: email,
-      to: process.env.SMTP_USER,
+      to: process.env.SMTP_USER,  // send to yourself
       subject: `Website Inquiry - ${service || "General"}`,
       html: `
         <h2>New Inquiry from Website</h2>
@@ -76,13 +78,12 @@ app.post('/api/send-email', async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Email sent successfully",
+      message: "Email sent successfully via GoDaddy SMTP",
       id: info.messageId
     });
 
   } catch (error) {
     console.error("❌ Email sending error:", error.message);
-
     res.status(500).json({
       success: false,
       error: error.message || "Failed to send email"
