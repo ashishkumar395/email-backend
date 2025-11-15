@@ -5,9 +5,9 @@ const cors = require('cors');
 
 const app = express();
 
-// --- Middleware ---
+// --- CORS Middleware ---
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || "*",
   methods: ['POST', 'GET'],
   allowedHeaders: ['Content-Type']
 }));
@@ -25,12 +25,12 @@ app.get('/health', (req, res) => {
 
 // --- SMTP Transporter Setup (Zoho) ---
 const transporter = nodemailer.createTransport({
-  host: "smtp.zoho.in",
-  port: 587,
-  secure: false, // TLS
+  host: process.env.SMTP_HOST || "smtp.zoho.in",
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === "true" ? true : false,
   auth: {
-    user: process.env.SMTP_USER,  // example: Contact@bluthservices.com
-    pass: process.env.SMTP_PASS   // your Zoho App Password
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
   }
 });
 
