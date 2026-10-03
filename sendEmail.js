@@ -15,7 +15,7 @@ app.use(express.json());
 
 // --- Health Check Routes ---
 app.get('/', (req, res) => {
-  res.status(200).send('✅ Email Backend (Brevo API) is running!');
+  res.status(200).send('✅ Email Backend (Resend API) is running!');
 });
 
 app.get('/health', (req, res) => {
@@ -23,7 +23,7 @@ app.get('/health', (req, res) => {
 });
 
 // --- Helpers ---
-const BREVO_URL = 'https://api.brevo.com/v3/smtp/email';
+const RESEND_URL = 'https://api.resend.com/emails';
 
 const escapeHtml = (value) =>
   String(value)
@@ -33,8 +33,8 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-if (!process.env.BREVO_API_KEY) {
-  console.warn("⚠️ BREVO_API_KEY is not set. /api/send-email will fail until it is added.");
+if (!process.env.RESEND_API_KEY) {
+  console.warn("⚠️ RESEND_API_KEY is not set. /api/send-email will fail until it is added.");
 }
 
 // --- Email Sending Route ---
@@ -48,12 +48,12 @@ app.post('/api/send-email', async (req, res) => {
     });
   }
 
-  const apiKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER;
+  const apiKey = process.env.RESEND_API_KEY;
+  const senderEmail = process.env.SENDER_EMAIL;
   const toEmail = process.env.TO_EMAIL || process.env.SMTP_USER;
 
   if (!apiKey || !senderEmail || !toEmail) {
-    console.error("❌ Email service not configured (BREVO_API_KEY / SENDER_EMAIL / TO_EMAIL)");
+    console.error("❌ Email service not configured (RESEND_API_KEY / SENDER_EMAIL / TO_EMAIL)");
     return res.status(500).json({
       success: false,
       error: "Email service is not configured"
@@ -64,19 +64,18 @@ app.post('/api/send-email', async (req, res) => {
   const timer = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const response = await fetch(BREVO_URL, {
+    const response = await fetch(RESEND_URL, {
       method: 'POST',
       headers: {
-        'accept': 'application/json',
-        'content-type': 'application/json',
-        'api-key': apiKey
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        sender: { name: 'Bluth Services Website', email: senderEmail },
-        to: [{ email: toEmail }],
-        replyTo: { email: String(email), name: String(name) },
+        from: `Bluth Services Website <${senderEmail}>`,
+        to: [toEmail],
+        reply_to: String(email),
         subject: `Website Inquiry - ${service || "General"}`,
-        htmlContent: `
+        html: `
           <h2>New Inquiry from Website</h2>
           <p><strong>Name:</strong> ${escapeHtml(name)}</p>
           <p><strong>Email:</strong> ${escapeHtml(email)}</p>
@@ -91,24 +90,24 @@ app.post('/api/send-email', async (req, res) => {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.error("❌ Brevo API error:", response.status, data);
+      console.error("❌ Resend API error:", response.status, data);
       return res.status(500).json({
         success: false,
         error: data.message || "Failed to send email"
       });
     }
 
-    console.log("✅ Email sent:", data.messageId);
+    console.log("✅ Email sent:", data.id);
 
     res.status(200).json({
       success: true,
-      message: "Email sent successfully via Brevo",
-      id: data.messageId
+      message: "Email sent successfully via Resend",
+      id: data.id
     });
 
   } catch (error) {
     const timedOut = error.name === 'AbortError';
-    console.error("❌ Email sending error:", timedOut ? "Request to Brevo timed out" : error.message);
+    console.error("❌ Email sending error:", timedOut ? "Request to Resend timed out" : error.message);
     res.status(500).json({
       success: false,
       error: timedOut ? "Email service timed out" : (error.message || "Failed to send email")
